@@ -1,0 +1,1446 @@
+# 전체 소스 파일
+
+19개 파일 전문을 그대로 수록합니다. Swift 18개 파일 1278행에 `Info.plist`를 더해 모두 1317행입니다. 단계별 페이지에는 그 단계에서 다루는 부분만 잘라 보여 주므로, **복사해서 붙일 때는 이 페이지를 쓰세요.**
+
+> Warning: `ReferenceLibrary.swift`의 기준 포즈 값은 자리표시자입니다. 실제 판정에 사용하기 전에 공식 자료와 실측 데이터로 교체하세요.
+
+## Overview
+
+### 파일 목록
+
+- `JihwaTutorApp.swift` — 21행
+- `Info.plist` — 39행
+- `Jamo.swift` — 54행
+- `PoseFeature.swift` — 65행
+- `PoseFeature+Angles.swift` — 62행
+- `PoseMatcher.swift` — 95행
+- `Stabilizer.swift` — 42행
+- `Coaching.swift` — 52행
+- `ReferenceLibrary.swift` — 167행
+- `HandSample.swift` — 24행
+- `HandTrackingFeed.swift` — 79행
+- `MockHandFeed.swift` — 64행
+- `GuideOverlay.swift` — 90행
+- `ErrorChart.swift` — 81행
+- `PracticeSpace.swift` — 19행
+- `TutorModel.swift` — 127행
+- `TutorView.swift` — 123행
+- `JamoPicker.swift` — 46행
+- `VerdictCard.swift` — 67행
+
+### JihwaTutorApp.swift
+
+```swift
+import SwiftUI
+
+@main
+struct JihwaTutorApp: App {
+
+    @State private var model = TutorModel()
+
+    var body: some Scene {
+        WindowGroup(id: "tutor") {
+            TutorView()
+                .environment(model)
+        }
+        .defaultSize(width: 720, height: 900)
+
+        ImmersiveSpace(id: "practice") {
+            PracticeSpace()
+                .environment(model)
+        }
+        .immersionStyle(selection: .constant(.mixed), in: .mixed)
+    }
+}
+```
+
+### Info.plist
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundleDisplayName</key>
+	<string>지화 튜터</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>NSHandsTrackingUsageDescription</key>
+	<string>손 모양을 실시간으로 판정하고 교정하기 위해 손 위치를 읽습니다. 관절 좌표는 기기 안에서만 쓰이며 저장하거나 전송하지 않습니다.</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationPreferredDefaultSceneSessionRole</key>
+		<string>UIWindowSceneSessionRoleApplication</string>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<true/>
+		<key>UISceneConfigurations</key>
+		<dict/>
+	</dict>
+</dict>
+</plist>
+```
+
+### Jamo.swift
+
+```swift
+import Foundation
+
+/// 한글 지문자 자모. 한국수화사전(2005) 기준 자음 19자 · 모음 21자 = 40자.
+enum Jamo: String, CaseIterable, Identifiable, Sendable {
+    // 자음 19
+    case giyeok = "ㄱ", ssangGiyeok = "ㄲ", nieun = "ㄴ", digeut = "ㄷ", ssangDigeut = "ㄸ"
+    case rieul = "ㄹ", mieum = "ㅁ", bieup = "ㅂ", ssangBieup = "ㅃ", siot = "ㅅ"
+    case ssangSiot = "ㅆ", ieung = "ㅇ", jieut = "ㅈ", ssangJieut = "ㅉ", chieut = "ㅊ"
+    case kieuk = "ㅋ", tieut = "ㅌ", pieup = "ㅍ", hieut = "ㅎ"
+
+    // 모음 21
+    case a = "ㅏ", ae = "ㅐ", ya = "ㅑ", yae = "ㅒ", eo = "ㅓ", e = "ㅔ", yeo = "ㅕ", ye = "ㅖ"
+    case o = "ㅗ", wa = "ㅘ", wae = "ㅙ", oe = "ㅚ", yo = "ㅛ"
+    case u = "ㅜ", weo = "ㅝ", we = "ㅞ", wi = "ㅟ", yu = "ㅠ"
+    case eu = "ㅡ", ui = "ㅢ", i = "ㅣ"
+
+    var id: String { rawValue }
+    var character: Character { rawValue.first! }
+
+    var isConsonant: Bool { Jamo.consonants.contains(self) }
+
+    static let consonants: [Jamo] = [
+        .giyeok, .ssangGiyeok, .nieun, .digeut, .ssangDigeut, .rieul, .mieum,
+        .bieup, .ssangBieup, .siot, .ssangSiot, .ieung, .jieut, .ssangJieut,
+        .chieut, .kieuk, .tieut, .pieup, .hieut
+    ]
+
+    static let vowels: [Jamo] = [
+        .a, .ae, .ya, .yae, .eo, .e, .yeo, .ye, .o, .wa, .wae, .oe, .yo,
+        .u, .weo, .we, .wi, .yu, .eu, .ui, .i
+    ]
+
+    /// 손 모양이 같고 손바닥 방향으로만 갈리는 자모.
+    /// 회전 정규화를 적용하면 이 글자들이 서로 뭉개진다.
+    /// 표준 손 모양은 국립국어원 한국수어사전에서 반드시 재확인할 것.
+    static let orientationCritical: Set<Jamo> = [.ssangSiot, .o, .yo, .u, .yu, .eu, .i]
+
+    var isOrientationCritical: Bool { Jamo.orientationCritical.contains(self) }
+}
+
+/// 굽힘각 인덱스(0..<15)를 손가락으로 되돌린다.
+enum FingerName: Int, CaseIterable, Sendable {
+    case thumb, index, middle, ring, little
+
+    var korean: String {
+        switch self {
+        case .thumb:  "엄지"
+        case .index:  "검지"
+        case .middle: "중지"
+        case .ring:   "약지"
+        case .little: "새끼"
+        }
+    }
+}
+```
+
+### PoseFeature.swift
+
+```swift
+import ARKit
+import simd
+
+extension SIMD4 where Scalar == Float {
+    var xyz: SIMD3<Float> { SIMD3(x, y, z) }
+}
+
+@inlinable
+func clampf(_ v: Float, _ lo: Float, _ hi: Float) -> Float { min(max(v, lo), hi) }
+
+/// 지화 한 글자를 판별하는 데 쓰는 22차원 특징.
+///
+/// 정규화는 위치와 손 크기까지만 한다. 회전까지 정규화하면
+/// 손바닥 방향으로 갈리는 7자(ㅆ · 모음 6자)를 잃는다.
+struct PoseFeature: Equatable, Codable, Sendable {
+    /// 손가락 5개 × 관절 3개. 라디안. 편 손가락은 0에 가깝다.
+    var bend: [Float]           // 15
+    /// 인접한 손가락 사이 벌림각. 라디안.
+    var spread: [Float]         // 4
+    /// 손바닥 법선. 수향을 담는다. 정규화로 지우지 않는다.
+    var palmNormal: SIMD3<Float> // 3
+
+    static let bendCount = 15
+    static let spreadCount = 4
+    static let dimension = bendCount + spreadCount + 3   // 22
+
+    init(bend: [Float], spread: [Float], palmNormal: SIMD3<Float>) {
+        self.bend = bend
+        self.spread = spread
+        self.palmNormal = palmNormal
+    }
+
+    var isWellFormed: Bool {
+        bend.count == Self.bendCount && spread.count == Self.spreadCount
+    }
+
+    // MARK: - 추출
+
+    /// 손목을 원점으로 옮기고 손 크기로 나눈 뒤 각도를 잰다.
+    /// 왼손은 x축을 뒤집어 오른손 기준표 하나로 판정한다.
+    static func extract(from skeleton: HandSkeleton,
+                        chirality: HandAnchor.Chirality = .right) -> PoseFeature? {
+        let wrist = skeleton.joint(.wrist)
+        guard wrist.isTracked else { return nil }
+
+        let toLocal = wrist.anchorFromJointTransform.inverse
+        let mirror: Float = (chirality == .left) ? -1 : 1
+
+        func local(_ name: HandSkeleton.JointName) -> SIMD3<Float> {
+            let m = toLocal * skeleton.joint(name).anchorFromJointTransform
+            var p = m.columns.3.xyz
+            p.x *= mirror
+            return p
+        }
+
+        // 손 크기로 나눠 어른 손과 아이 손을 같은 자리에 놓는다.
+        let span = length(local(.middleFingerKnuckle))
+        guard span > 0.02 else { return nil }
+
+        let f = PoseFeature(bend: bendAngles(local),
+                            spread: spreadAngles(local),
+                            palmNormal: palmNormal(local))
+        return f.isWellFormed ? f : nil
+    }
+}
+```
+
+### PoseFeature+Angles.swift
+
+```swift
+import ARKit
+import simd
+
+typealias JointReader = (HandSkeleton.JointName) -> SIMD3<Float>
+
+/// 세 관절이 이루는 굽힘각. 편 손가락은 0에 가깝다.
+func jointAngle(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ c: SIMD3<Float>) -> Float {
+    let u = a - b, v = c - b
+    let lu = length(u), lv = length(v)
+    guard lu > 1e-5, lv > 1e-5 else { return 0 }   // 0으로 나누기 방지
+    return .pi - acos(clampf(dot(u, v) / (lu * lv), -1, 1))
+}
+
+extension PoseFeature {
+
+    /// 손가락마다 3개씩, 뿌리에서 끝 방향으로 열다섯 개.
+    static func bendAngles(_ local: JointReader) -> [Float] {
+        var out: [Float] = []
+        out.reserveCapacity(bendCount)
+        for chain in jointChains {
+            for i in 0..<3 {
+                out.append(jointAngle(local(chain[i]), local(chain[i + 1]), local(chain[i + 2])))
+            }
+        }
+        return out
+    }
+
+    /// 인접한 손가락 방향 벡터 사이의 각. 네 개.
+    static func spreadAngles(_ local: JointReader) -> [Float] {
+        let dirs = jointChains.map { chain -> SIMD3<Float> in
+            let root = local(chain[1])          // knuckle
+            let tip = local(chain[4])           // tip
+            let d = tip - root
+            let l = length(d)
+            return l > 1e-5 ? d / l : SIMD3(0, 1, 0)
+        }
+        return (0..<4).map { acos(clampf(dot(dirs[$0], dirs[$0 + 1]), -1, 1)) }
+    }
+
+    /// 손바닥 법선은 손목·검지너클·새끼너클 세 점의 외적으로 구한다.
+    static func palmNormal(_ local: JointReader) -> SIMD3<Float> {
+        let index = local(.indexFingerKnuckle)
+        let little = local(.littleFingerKnuckle)
+        let n = cross(index, little)
+        let len = length(n)
+        return len > 1e-5 ? n / len : SIMD3(0, 0, 1)
+    }
+
+    /// [뿌리, 너클, 중간뿌리, 중간끝, 끝] 5개씩 × 5손가락.
+    /// 앞 세 점으로 첫 굽힘각을 재기 위해 뿌리 관절을 하나 더 앞에 둔다.
+    static let jointChains: [[HandSkeleton.JointName]] = [
+        [.wrist, .thumbKnuckle, .thumbIntermediateBase, .thumbIntermediateTip, .thumbTip],
+        [.indexFingerMetacarpal, .indexFingerKnuckle, .indexFingerIntermediateBase,
+         .indexFingerIntermediateTip, .indexFingerTip],
+        [.middleFingerMetacarpal, .middleFingerKnuckle, .middleFingerIntermediateBase,
+         .middleFingerIntermediateTip, .middleFingerTip],
+        [.ringFingerMetacarpal, .ringFingerKnuckle, .ringFingerIntermediateBase,
+         .ringFingerIntermediateTip, .ringFingerTip],
+        [.littleFingerMetacarpal, .littleFingerKnuckle, .littleFingerIntermediateBase,
+         .littleFingerIntermediateTip, .littleFingerTip]
+    ]
+}
+```
+
+### PoseMatcher.swift
+
+```swift
+import Foundation
+import simd
+
+/// 기준 포즈와의 거리. 작을수록 정답에 가깝다.
+struct PoseMatch: Equatable, Sendable {
+    var jamo: Jamo
+    /// 관절별 오차(라디안). 피드백 문장이 여기서 나온다.
+    var bendError: [Float]
+    var spreadError: [Float]
+    var orientationError: Float
+    /// 가중 합. 1 미만이면 통과.
+    var distance: Float
+    /// 어느 쪽으로 어긋났는지. 음수면 기준보다 덜 접혔다.
+    var bendSigned: [Float]
+    /// 관절 15개 각각의 허용 오차(라디안). 손가락마다 다를 수 있다.
+    var bendTolerance: [Float]
+
+    var passed: Bool { distance < 1 }
+
+    /// 허용 오차로 나눈 관절별 오차. 1을 넘은 관절이 초과다.
+    /// 손가락마다 허용 오차가 다르므로 절대 오차끼리 비교하면 안 된다.
+    var bendRatio: [Float] {
+        zip(bendError, bendTolerance).map { $0 / max($1, 1e-4) }
+    }
+}
+
+struct PoseMatcher: Sendable {
+    /// 굽힘각 허용 오차. 15도. 이보다 빡빡하면 초심자가 한 글자도 통과하지 못한다.
+    var bendTolerance: Float = 0.26
+    /// 수향 허용 오차. 25도. 손목은 굽힘각보다 재현성이 낮다.
+    var orientationTolerance: Float = 0.44
+    /// 약지와 새끼를 서로 다르게 접어야 하는 글자에서 그 두 손가락에만 곱하는 허용 오차 배수.
+    ///
+    /// 두 손가락은 깊은손가락굽힘근의 힘줄을 나눠 쓰기 때문에 완전히 분리되지 않는다.
+    /// 되는 사람도 있고 안 되는 사람도 있으며, 안 되는 사람은 손가락이 부들부들 떨린다.
+    /// 실제 지화 교육에서도 이런 글자는 대강 모양만 맞으면 인정한다.
+    /// 기계가 사람보다 엄격하면 배우는 사람이 지친다.
+    var coupledFingerRelief: Float = 2
+
+    func match(_ feature: PoseFeature, to reference: PoseFeature, jamo: Jamo) -> PoseMatch {
+        let signed = zip(feature.bend, reference.bend).map { $0 - $1 }
+        let bend = signed.map { abs($0) }
+        let spread = zip(feature.spread, reference.spread).map { abs($0 - $1) }
+        let orientation = acos(clampf(dot(normalize(feature.palmNormal),
+                                          normalize(reference.palmNormal)), -1, 1))
+
+        // 관절마다 허용 오차가 다르다. 절대 오차를 쓰지 않고 허용 오차로 나눈 비율을 쓴다.
+        let tolerance = bendTolerances(for: reference)
+        let ratio = zip(bend, tolerance).map { $0 / $1 }
+
+        // 수향은 글자를 가르는 신호이므로 굽힘각보다 무겁게 센다.
+        let orientationWeight: Float = jamo.isOrientationCritical ? 1.4 : 0.8
+        let overall = ratio.reduce(0, +) / Float(max(ratio.count, 1))
+                    + spread.reduce(0, +) / Float(max(spread.count, 1)) / bendTolerance * 0.6
+                    + orientation / orientationTolerance * orientationWeight
+
+        // 평균만 보면 관절 하나가 크게 어긋나도 나머지 열넷에 묻혀 통과한다.
+        // 중지만 22도 틀린 손은 통과시키면 안 되므로 최악 관절로 한 번 더 막는다.
+        let worst = ratio.max() ?? 0
+        let d = max(overall, worst)
+
+        return PoseMatch(jamo: jamo, bendError: bend, spreadError: spread,
+                         orientationError: orientation, distance: d, bendSigned: signed,
+                         bendTolerance: tolerance)
+    }
+
+    /// 관절 15개의 허용 오차. 기본은 전부 같고, 약지·새끼 분리를 요구하는 글자에서만 그 여섯이 넓어진다.
+    func bendTolerances(for reference: PoseFeature) -> [Float] {
+        var t = [Float](repeating: bendTolerance, count: PoseFeature.bendCount)
+        guard demandsFingerDecoupling(reference) else { return t }
+        for i in (FingerName.ring.rawValue * 3)..<PoseFeature.bendCount {
+            t[i] = bendTolerance * coupledFingerRelief
+        }
+        return t
+    }
+
+    /// 기준 포즈가 약지와 새끼에 서로 다른 굽힘을 요구하는가.
+    /// 요구하는 글자만 자동으로 골라내므로 손으로 목록을 관리하지 않는다.
+    /// 자리표시자 표에서는 ㄸ · ㅃ · ㅉ · ㅊ · ㅌ · ㅍ · ㅒ · ㅖ · ㅞ · ㅠ · ㅣ 가 걸린다.
+    func demandsFingerDecoupling(_ reference: PoseFeature) -> Bool {
+        guard reference.bend.count == PoseFeature.bendCount else { return false }
+        let ring = FingerName.ring.rawValue * 3
+        let little = FingerName.little.rawValue * 3
+        let gap = (0..<3).map { abs(reference.bend[ring + $0] - reference.bend[little + $0]) }
+        return (gap.max() ?? 0) > bendTolerance
+    }
+
+    /// 40자 전체와 비교해 가장 가까운 순으로 돌려준다. 프레임당 1ms 예산 안에 든다.
+    @MainActor
+    func rank(_ feature: PoseFeature, in library: ReferenceLibrary) -> [PoseMatch] {
+        library.all()
+            .map { match(feature, to: $0.value, jamo: $0.key) }
+            .sorted { $0.distance < $1.distance }
+    }
+}
+```
+
+### Stabilizer.swift
+
+```swift
+import Foundation
+
+/// 프레임 단위 판정은 떨린다. 일정 시간 같은 글자가 유지되어야 확정한다.
+@MainActor
+final class Stabilizer {
+    /// 이 시간 동안 유지되어야 통과. 짧으면 스쳐 지나가며 오답이 통과된다.
+    var dwell: TimeInterval = 0.4
+    /// 통과한 뒤에는 더 관대하게 본다. 손이 조금 흔들려도 풀리지 않게.
+    var holdMultiplier: Float = 1.35
+
+    private(set) var candidate: Jamo?
+    private(set) var confirmed: Jamo?
+    private var since: TimeInterval = 0
+
+    /// 후보가 유지된 비율 0...1. 진행 링을 그리는 데 쓴다.
+    private(set) var progress: Double = 0
+
+    func feed(_ best: PoseMatch, at time: TimeInterval) {
+        let threshold: Float = (confirmed == best.jamo) ? holdMultiplier : 1
+        guard best.distance < threshold else {
+            candidate = nil
+            confirmed = nil
+            progress = 0
+            return
+        }
+        if candidate != best.jamo {
+            candidate = best.jamo
+            since = time
+            progress = 0
+        } else {
+            progress = min((time - since) / dwell, 1)
+            if time - since >= dwell { confirmed = best.jamo }
+        }
+    }
+
+    func reset() {
+        candidate = nil
+        confirmed = nil
+        progress = 0
+        since = 0
+    }
+}
+```
+
+### Coaching.swift
+
+```swift
+import Foundation
+
+/// 틀렸다는 사실이 아니라 무엇을 어떻게 바꿔야 하는지를 말한다.
+/// 한 번에 하나. 여러 개를 한꺼번에 말하면 사용자는 아무것도 고치지 못한다.
+struct Coach: Sendable {
+    var bendTolerance: Float = 0.26
+    var orientationTolerance: Float = 0.44
+
+    func advice(for match: PoseMatch) -> String? {
+        guard !match.passed else { return nil }   // 통과했으면 말하지 않는다
+
+        if match.orientationError > orientationTolerance {
+            return "손바닥 방향을 바로잡아 주세요."
+        }
+
+        // 손가락마다 허용 오차가 다르므로 절대 오차가 아니라 허용 오차 대비 비율로 고른다.
+        // 약지·새끼를 관대하게 보는 글자에서 그 두 손가락만 계속 지적하는 일을 막는다.
+        let ratio = match.bendRatio
+        guard let worst = ratio.enumerated().max(by: { $0.element < $1.element }),
+              worst.element > 1 else {
+            // 굽힘은 괜찮은데 거리가 남았다면 벌림이 원인이다.
+            if let s = match.spreadError.enumerated().max(by: { $0.element < $1.element }),
+               s.element > bendTolerance {
+                let a = FingerName.allCases[s.offset], b = FingerName.allCases[s.offset + 1]
+                return "\(a.korean)와 \(b.korean) 사이를 조금 더 붙여 보세요."
+            }
+            return nil
+        }
+
+        let finger = FingerName.allCases[worst.offset / 3]
+        let tooStraight = match.bendSigned[worst.offset] < 0
+
+        return tooStraight
+            ? "\(finger.korean)를 조금 더 접어 주세요."
+            : "\(finger.korean)를 조금 더 펴 주세요."
+    }
+
+    /// 약지와 새끼를 따로 접어야 하는 글자에서 한 번만 띄우는 안내.
+    /// 두 손가락은 힘줄을 나눠 쓰기 때문에 완전히 분리되지 않는 사람이 많다.
+    func note(for match: PoseMatch) -> String? {
+        guard let base = match.bendTolerance.first,
+              let ring = match.bendTolerance[safe: FingerName.ring.rawValue * 3],
+              ring > base else { return nil }
+        return "약지와 새끼는 힘줄을 나눠 써서 따로 접기 어렵습니다. 이 글자는 두 손가락을 넉넉하게 봅니다."
+    }
+}
+
+extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
+    }
+}
+```
+
+### ReferenceLibrary.swift
+
+```swift
+import Foundation
+import simd
+
+/// 자모 하나의 기준 포즈를 사람이 읽고 쓸 수 있는 형태로 적은 것.
+/// curl 0 = 완전히 편 상태, 1 = 완전히 접은 상태.
+struct PoseRecipe: Sendable {
+    var curl: [Float]              // 손가락 5개
+    var spread: [Float]            // 인접 4쌍, 0 = 붙임, 1 = 최대로 벌림
+    var palm: SIMD3<Float>         // 손목 기준 손바닥 법선
+
+    func feature() -> PoseFeature {
+        // 손가락 하나의 굽힘은 뿌리·중간·끝에 각각 다르게 실린다.
+        let weight: [Float] = [0.9, 1.1, 1.0]
+        let maxBend: Float = 1.5   // 라디안. 완전히 접은 관절의 굽힘각.
+        var bend: [Float] = []
+        for c in curl {
+            for w in weight { bend.append(clampf(c, 0, 1) * maxBend * w) }
+        }
+        let maxSpread: Float = 0.45
+        return PoseFeature(bend: bend,
+                           spread: spread.map { clampf($0, 0, 1) * maxSpread },
+                           palmNormal: normalize(palm))
+    }
+}
+
+/// 기준 포즈 표. 40자를 여기에 채운다.
+///
+/// ⚠️ 아래 값은 문서의 구조를 그대로 옮긴 자리표시자다.
+/// 실제 손 모양은 국립국어원 한국수어사전에서 확인하고,
+/// 숙련자 포즈를 여러 번 기록해 평균 특징 벡터로 교체해야 한다.
+/// 잘못 배운 손 모양을 가르치는 앱은 없느니만 못하다.
+@MainActor
+final class ReferenceLibrary {
+    static let shared = ReferenceLibrary()
+
+    private(set) var table: [Jamo: PoseFeature] = [:]
+    /// 실측으로 교체된 자모. 자리표시자와 구분한다.
+    private(set) var measured: Set<Jamo> = []
+
+    init() {
+        for (jamo, recipe) in Self.placeholders {
+            table[jamo] = recipe.feature()
+        }
+    }
+
+    func all() -> [(key: Jamo, value: PoseFeature)] {
+        table.map { (key: $0.key, value: $0.value) }
+    }
+
+    func reference(for jamo: Jamo) -> PoseFeature? { table[jamo] }
+    func isPlaceholder(_ jamo: Jamo) -> Bool { !measured.contains(jamo) }
+
+    /// 숙련자 포즈 여러 벌을 평균 내 기준 포즈로 등록한다.
+    /// 관절별 표준편차가 곧 초기 허용 오차가 된다.
+    @discardableResult
+    func register(_ jamo: Jamo, samples: [PoseFeature]) -> (mean: PoseFeature, stdDev: [Float])? {
+        guard !samples.isEmpty else { return nil }
+        let n = Float(samples.count)
+
+        var bend = [Float](repeating: 0, count: PoseFeature.bendCount)
+        var spread = [Float](repeating: 0, count: PoseFeature.spreadCount)
+        var palm = SIMD3<Float>.zero
+        for s in samples {
+            for i in 0..<PoseFeature.bendCount { bend[i] += s.bend[i] }
+            for i in 0..<PoseFeature.spreadCount { spread[i] += s.spread[i] }
+            palm += s.palmNormal
+        }
+        bend = bend.map { $0 / n }
+        spread = spread.map { $0 / n }
+        palm = length(palm) > 1e-5 ? normalize(palm) : SIMD3(0, 0, 1)
+
+        let stdDev = (0..<PoseFeature.bendCount).map { i -> Float in
+            let v = samples.reduce(Float(0)) { $0 + pow($1.bend[i] - bend[i], 2) } / n
+            return sqrt(v)
+        }
+
+        let mean = PoseFeature(bend: bend, spread: spread, palmNormal: palm)
+        table[jamo] = mean
+        measured.insert(jamo)
+        confusableCache = nil
+        return (mean, stdDev)
+    }
+
+    // MARK: - 혼동 쌍 감사
+
+    /// 기준 표 안에서 서로 너무 가까운 자모 쌍을 찾는다.
+    /// 거리가 1 미만이면 그 두 글자는 현재 표로는 갈라낼 수 없다.
+    /// 4단계에서 이 목록에만 CoreML 보조 분류기를 붙인다.
+    /// 매 프레임 다시 세지 않도록 캐시한다. 기준 표가 바뀌면 무효화된다.
+    private var confusableCache: [(Jamo, Jamo, Float)]?
+
+    func confusablePairs(threshold: Float = 1, matcher: PoseMatcher = PoseMatcher())
+        -> [(Jamo, Jamo, Float)] {
+        if threshold == 1, let cached = confusableCache { return cached }
+        let items = all().sorted { $0.key.rawValue < $1.key.rawValue }
+        var out: [(Jamo, Jamo, Float)] = []
+        for i in items.indices {
+            for j in (i + 1)..<items.count {
+                let d = matcher.match(items[i].value, to: items[j].value, jamo: items[j].key).distance
+                if d < threshold { out.append((items[i].key, items[j].key, d)) }
+            }
+        }
+        let sorted = out.sorted { $0.2 < $1.2 }
+        if threshold == 1 { confusableCache = sorted }
+        return sorted
+    }
+
+    // MARK: - 자리표시자 표
+
+    static let placeholders: [Jamo: PoseRecipe] = {
+        let up = SIMD3<Float>(0, 1, 0)
+        let out = SIMD3<Float>(0, 0, 1)
+        let down = SIMD3<Float>(0, -1, 0)
+        let side = SIMD3<Float>(1, 0, 0)
+
+        func r(_ curl: [Float], _ spread: [Float] = [0.3, 0.2, 0.2, 0.2],
+               _ palm: SIMD3<Float> = out) -> PoseRecipe {
+            PoseRecipe(curl: curl, spread: spread, palm: palm)
+        }
+
+        return [
+            // 자음 19
+            .giyeok:      r([0.2, 0.1, 0.9, 0.9, 0.9]),
+            .ssangGiyeok: r([0.2, 0.1, 0.1, 0.9, 0.9]),
+            .nieun:       r([0.8, 0.2, 0.9, 0.9, 0.9]),
+            .digeut:      r([0.3, 0.3, 0.3, 0.3, 0.3], [0.1, 0.1, 0.1, 0.1]),
+            .ssangDigeut: r([0.3, 0.3, 0.3, 0.3, 0.9], [0.1, 0.1, 0.1, 0.1]),
+            .rieul:       r([0.9, 0.1, 0.1, 0.9, 0.9]),
+            .mieum:       r([0.9, 0.9, 0.9, 0.9, 0.9], [0.0, 0.0, 0.0, 0.0]),
+            .bieup:       r([0.1, 0.1, 0.1, 0.1, 0.1], [0.6, 0.4, 0.4, 0.4]),
+            .ssangBieup:  r([0.1, 0.1, 0.1, 0.1, 0.9], [0.6, 0.4, 0.4, 0.4]),
+            .siot:        r([0.9, 0.1, 0.1, 0.9, 0.9], [0.2, 0.7, 0.2, 0.2]),
+            .ssangSiot:   r([0.9, 0.1, 0.1, 0.9, 0.9], [0.2, 0.7, 0.2, 0.2], down),
+            .ieung:       r([0.5, 0.5, 0.5, 0.5, 0.5], [0.0, 0.0, 0.0, 0.0]),
+            .jieut:       r([0.5, 0.5, 0.1, 0.9, 0.9]),
+            .ssangJieut:  r([0.5, 0.5, 0.1, 0.1, 0.9]),
+            .chieut:      r([0.5, 0.1, 0.1, 0.5, 0.9], [0.3, 0.5, 0.2, 0.2]),
+            .kieuk:       r([0.2, 0.1, 0.5, 0.9, 0.9]),
+            .tieut:       r([0.2, 0.1, 0.1, 0.5, 0.9]),
+            .pieup:       r([0.2, 0.1, 0.1, 0.1, 0.9], [0.4, 0.3, 0.3, 0.3]),
+            .hieut:       r([0.9, 0.1, 0.9, 0.9, 0.9], [0.4, 0.2, 0.2, 0.2]),
+
+            // 모음 21
+            .a:    r([0.1, 0.1, 0.9, 0.9, 0.9], [0.6, 0.2, 0.2, 0.2]),
+            .ae:   r([0.1, 0.1, 0.1, 0.9, 0.9], [0.6, 0.5, 0.2, 0.2]),
+            .ya:   r([0.1, 0.1, 0.1, 0.9, 0.9], [0.6, 0.2, 0.2, 0.2]),
+            .yae:  r([0.1, 0.1, 0.1, 0.1, 0.9], [0.6, 0.3, 0.3, 0.2]),
+            .eo:   r([0.5, 0.1, 0.9, 0.9, 0.9], [0.4, 0.2, 0.2, 0.2]),
+            .e:    r([0.5, 0.1, 0.1, 0.9, 0.9], [0.4, 0.4, 0.2, 0.2]),
+            .yeo:  r([0.5, 0.1, 0.1, 0.9, 0.9], [0.4, 0.2, 0.2, 0.2]),
+            .ye:   r([0.5, 0.1, 0.1, 0.1, 0.9], [0.4, 0.3, 0.3, 0.2]),
+            .o:    r([0.9, 0.1, 0.9, 0.9, 0.9], [0.2, 0.2, 0.2, 0.2], up),
+            .wa:   r([0.9, 0.1, 0.9, 0.9, 0.9], [0.2, 0.2, 0.2, 0.2], side),
+            .wae:  r([0.9, 0.1, 0.1, 0.9, 0.9], [0.2, 0.4, 0.2, 0.2], side),
+            .oe:   r([0.9, 0.1, 0.1, 0.9, 0.9], [0.2, 0.2, 0.2, 0.2], side),
+            .yo:   r([0.9, 0.1, 0.1, 0.9, 0.9], [0.2, 0.2, 0.2, 0.2], up),
+            .u:    r([0.9, 0.1, 0.9, 0.9, 0.9], [0.2, 0.2, 0.2, 0.2], down),
+            .weo:  r([0.9, 0.1, 0.1, 0.9, 0.9], [0.2, 0.3, 0.2, 0.2], down),
+            .we:   r([0.9, 0.1, 0.1, 0.1, 0.9], [0.2, 0.3, 0.3, 0.2], down),
+            .wi:   r([0.5, 0.1, 0.1, 0.1, 0.1], [0.3, 0.3, 0.3, 0.3], down),
+            .yu:   r([0.9, 0.1, 0.1, 0.1, 0.9], [0.2, 0.3, 0.3, 0.2], up),
+            .eu:   r([0.9, 0.1, 0.9, 0.9, 0.9], [0.2, 0.2, 0.2, 0.2], out),
+            .ui:   r([0.9, 0.1, 0.1, 0.9, 0.9], [0.2, 0.3, 0.2, 0.2], out),
+            .i:    r([0.9, 0.9, 0.9, 0.9, 0.1], [0.2, 0.2, 0.2, 0.4], side)
+        ]
+    }()
+}
+```
+
+### HandSample.swift
+
+```swift
+import ARKit
+import simd
+
+/// 판정 단계로 넘어가는 한 프레임 분량의 손 정보.
+/// 실기기 경로와 목 데이터 경로가 같은 타입을 낸다.
+struct HandSample {
+    var feature: PoseFeature
+    var chirality: HandAnchor.Chirality
+    /// 오버레이 정렬용. 목 데이터에서는 nil.
+    var wristTransform: simd_float4x4?
+    /// 손목에서 중지 너클까지의 거리. 오버레이 크기 보정에 쓴다.
+    var handSpan: Float
+    var timestamp: TimeInterval
+}
+
+@MainActor
+protocol HandFeed: AnyObject {
+    var samples: AsyncStream<HandSample> { get }
+    func start() async
+    func stop()
+}
+
+/// SwiftUI 쪽에서 ARKit 타입 이름을 짧게 쓰기 위한 별칭.
+typealias ARKitChirality = HandAnchor.Chirality
+```
+
+### HandTrackingFeed.swift
+
+```swift
+import ARKit
+import simd
+import OSLog
+import QuartzCore
+
+/// 실기기 경로. 손 스켈레톤 추적은 몰입 공간에서만 동작한다.
+///
+/// 관절 좌표와 카메라 프레임은 기기 밖으로 내보내지 않는다.
+/// 파일 · 로그 · 네트워크 · 분석 도구 어디에도 남기지 않는다.
+@MainActor
+final class HandTrackingFeed: HandFeed {
+    private let session = ARKitSession()
+    private let provider = HandTrackingProvider()
+    private let logger = Logger(subsystem: "JihwaTutor", category: "HandTracking")
+
+    private var continuation: AsyncStream<HandSample>.Continuation?
+    private var task: Task<Void, Never>?
+
+    /// 주로 쓰는 손. 설정에서 고를 수 있다.
+    var preferredChirality: HandAnchor.Chirality = .right
+
+    let samples: AsyncStream<HandSample>
+
+    init() {
+        var cont: AsyncStream<HandSample>.Continuation!
+        samples = AsyncStream { cont = $0 }
+        continuation = cont
+    }
+
+    static var isSupported: Bool { HandTrackingProvider.isSupported }
+
+    func start() async {
+        guard Self.isSupported else {
+            logger.notice("이 기기에서는 손 추적을 쓸 수 없습니다. 목 데이터 경로를 쓰세요.")
+            return
+        }
+        do {
+            try await session.run([provider])
+        } catch {
+            logger.error("ARKitSession 시작 실패: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+
+        task = Task { [weak self] in
+            guard let self else { return }
+            for await update in self.provider.anchorUpdates {
+                guard !Task.isCancelled else { break }
+                self.handle(update.anchor)
+            }
+        }
+    }
+
+    func stop() {
+        task?.cancel()
+        task = nil
+        session.stop()
+        continuation?.finish()
+    }
+
+    private func handle(_ anchor: HandAnchor) {
+        guard anchor.isTracked,
+              anchor.chirality == preferredChirality,
+              let skeleton = anchor.handSkeleton,
+              let feature = PoseFeature.extract(from: skeleton, chirality: anchor.chirality)
+        else { return }
+
+        let wrist = skeleton.joint(.wrist).anchorFromJointTransform
+        let knuckle = skeleton.joint(.middleFingerKnuckle).anchorFromJointTransform
+        let span = length((wrist.inverse * knuckle).columns.3.xyz)
+
+        continuation?.yield(
+            HandSample(feature: feature,
+                       chirality: anchor.chirality,
+                       wristTransform: anchor.originFromAnchorTransform * wrist,
+                       handSpan: span,
+                       timestamp: CACurrentMediaTime())
+        )
+    }
+}
+```
+
+### MockHandFeed.swift
+
+```swift
+import ARKit
+import Foundation
+import QuartzCore
+import simd
+
+/// 시뮬레이터 경로. 손 스켈레톤 앵커가 오지 않으므로 특징 벡터를 직접 재생한다.
+///
+/// 1단계에서 이 경로를 함께 만들어 두면 개발 속도가 크게 달라진다.
+/// 실기기 없이도 판정 · 안정화 · 피드백 전체를 돌려 볼 수 있다.
+@MainActor
+final class MockHandFeed: HandFeed {
+    private var continuation: AsyncStream<HandSample>.Continuation?
+    private var task: Task<Void, Never>?
+
+    /// 재생할 목표 자모. 이 글자의 기준 포즈 주변에서 흔들리는 손을 흉내 낸다.
+    var target: Jamo = .giyeok
+    /// 일부러 실어 주는 오차(라디안). 0이면 정답, 크면 실패.
+    var injectedError: Float = 0.35
+    /// 프레임 주기. 90Hz.
+    var interval: Duration = .milliseconds(11)
+
+    let samples: AsyncStream<HandSample>
+
+    init() {
+        var cont: AsyncStream<HandSample>.Continuation!
+        samples = AsyncStream { cont = $0 }
+        continuation = cont
+    }
+
+    func start() async {
+        task = Task { [weak self] in
+            var phase: Float = 0
+            while !Task.isCancelled {
+                guard let self else { return }
+                if let base = ReferenceLibrary.shared.reference(for: self.target) {
+                    self.continuation?.yield(self.perturb(base, phase: phase))
+                }
+                phase += 0.05
+                try? await Task.sleep(for: self.interval)
+            }
+        }
+    }
+
+    func stop() {
+        task?.cancel()
+        task = nil
+        continuation?.finish()
+    }
+
+    /// 중지 하나에 오차를 싣고, 나머지는 사람 손 떨림 수준으로만 흔든다.
+    private func perturb(_ base: PoseFeature, phase: Float) -> HandSample {
+        var bend = base.bend
+        let jitter: Float = 0.02
+        for i in bend.indices { bend[i] += sin(phase + Float(i)) * jitter }
+        if bend.count > 6 { bend[7] += injectedError }   // 중지 중간 관절
+
+        let f = PoseFeature(bend: bend, spread: base.spread, palmNormal: base.palmNormal)
+        return HandSample(feature: f,
+                          chirality: .right,
+                          wristTransform: nil,
+                          handSpan: 0.09,
+                          timestamp: CACurrentMediaTime())
+    }
+}
+```
+
+### GuideOverlay.swift
+
+```swift
+import UIKit
+import RealityKit
+import simd
+
+/// 정답 손 모양을 반투명 뼈대로 사용자 손 위에 겹친다.
+/// 정렬이 어긋나면 오버레이는 오히려 방해가 된다.
+@MainActor
+final class GuideOverlay {
+
+    enum Mode: String, CaseIterable, Identifiable, Sendable {
+        /// 손 옆에 나란히. 초심자가 선호한다.
+        case sideBySide = "나란히"
+        /// 정확히 겹치기. 교정 단계에서 선호한다.
+        case overlaid = "겹치기"
+        case hidden = "끄기"
+        var id: String { rawValue }
+    }
+
+    let root = Entity()
+
+    private var bones: [Entity] = []
+    private var boneMesh: MeshResource = .generateBox(size: [0.008, 0.030, 0.008],
+                                                     cornerRadius: 0.004)
+    /// 손목 기준 뼈대 15개. 굽힘각 인덱스와 1:1로 맞춘다.
+    private let boneCount = PoseFeature.bendCount
+
+    init() {
+        for i in 0..<boneCount {
+            let e = Entity()
+            e.name = "bone-\(i)"
+            e.components.set(ModelComponent(mesh: boneMesh, materials: [Self.material(opacity: 0.15)]))
+            // 손목 원점 기준 대략적인 손가락 배치. 기준 포즈 뼈대를 붙이면 교체된다.
+            let finger = i / 3, joint = i % 3
+            e.position = SIMD3(Float(finger - 2) * 0.022,
+                               0.04 + Float(joint) * 0.030,
+                               0)
+            root.addChild(e)
+            bones.append(e)
+        }
+        root.isEnabled = false
+    }
+
+    /// 손목을 원점, 손 크기를 1로 두고 만든 기준 뼈대를
+    /// 사용자의 손목 변환과 손 크기로 되돌려 놓는다.
+    func align(wrist: simd_float4x4, span: Float, mode: Mode) {
+        var t = Transform(matrix: wrist)
+        t.scale = SIMD3(repeating: max(span / 0.09, 0.5))
+        if mode == .sideBySide {
+            // 손 오른쪽 12cm 옆에 나란히 세운다.
+            t.translation += SIMD3(0.12, 0, 0)
+        }
+        root.transform = t
+    }
+
+    /// 오차가 큰 관절만 불투명하게 만든다.
+    /// 색을 하나 더 쓰는 대신 투명도로 구분해 색맹 사용자도 읽을 수 있게 한다.
+    /// 관절마다 허용 오차가 다르다. 약지·새끼를 관대하게 보는 글자에서
+    /// 그 두 손가락이 늘 진하게 보이면 사용자는 고칠 수 없는 것을 고치려 든다.
+    func highlight(_ errors: [Float], tolerances: [Float]) {
+        for (i, bone) in bones.enumerated() where i < errors.count {
+            let tolerance = i < tolerances.count ? tolerances[i] : 0.26
+            let over = min(errors[i] / max(tolerance, 1e-4), 2)
+            bone.components.set(
+                ModelComponent(mesh: boneMesh,
+                               materials: [Self.material(opacity: 0.15 + 0.35 * over)])
+            )
+        }
+    }
+
+    func update(match: PoseMatch,
+                reference: PoseFeature,
+                wrist: simd_float4x4?,
+                span: Float,
+                tolerances: [Float],
+                mode: Mode) {
+        guard mode != .hidden, let wrist else {
+            root.isEnabled = false
+            return
+        }
+        root.isEnabled = true
+        align(wrist: wrist, span: span, mode: mode)
+        highlight(match.bendError, tolerances: tolerances)
+    }
+
+    private static func material(opacity: Float) -> UnlitMaterial {
+        var m = UnlitMaterial(color: .white)
+        m.blending = .transparent(opacity: .init(floatLiteral: opacity))
+        return m
+    }
+}
+```
+
+### ErrorChart.swift
+
+```swift
+import SwiftUI
+
+/// 손가락별 오차와 허용 오차선. 색이 아니라 길이와 형태로 구분한다.
+struct ErrorChart: View {
+    @Environment(TutorModel.self) private var model
+
+    var body: some View {
+        GroupBox("기준 포즈 대비 손가락별 오차") {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(FingerName.allCases, id: \.rawValue) { finger in
+                    row(finger)
+                }
+                Text("허용 오차 \(Int(model.toleranceDegrees))° · 오차가 가장 큰 손가락 하나만 교정 문장으로 만듭니다.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                if let note = model.fingerNote {
+                    Text(note)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 8)
+        }
+    }
+
+    private func row(_ finger: FingerName) -> some View {
+        let degrees = worstDegrees(finger)
+        let tolerance = toleranceDegrees(finger)
+        let relaxed = tolerance > CGFloat(model.toleranceDegrees) + 0.5
+        let over = degrees > tolerance
+        return HStack(spacing: 12) {
+            Text(finger.korean)
+                .font(.callout)
+                .frame(width: 44, alignment: .leading)
+
+            GeometryReader { geo in
+                let full = geo.size.width
+                let unit: CGFloat = full / 45.0     // 0…45도 눈금
+                ZStack(alignment: .leading) {
+                    Capsule().fill(.quaternary).frame(height: 10)
+                    Capsule()
+                        .fill(over ? Color.orange : Color.green)
+                        .frame(width: min(degrees * unit, full), height: 10)
+                    Rectangle()
+                        .fill(.primary.opacity(0.5))
+                        .frame(width: 1.5, height: 18)
+                        .offset(x: tolerance * unit)
+                }
+                .frame(maxHeight: .infinity, alignment: .center)
+            }
+            .frame(height: 20)
+
+            Text("\(Int(degrees))°")
+                .font(.caption.monospacedDigit())
+                .frame(width: 40, alignment: .trailing)
+
+            Text(over ? "초과" : (relaxed ? "완화" : "통과"))
+                .font(.caption2)
+                .frame(width: 34)
+                .foregroundStyle(over ? .orange : .secondary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(finger.korean) 오차 \(Int(degrees))도, 허용 오차 \(Int(tolerance))도, \(over ? "초과" : "통과")")
+    }
+
+    /// 손가락마다 허용 오차가 다를 수 있다.
+    /// 약지와 새끼를 따로 접어야 하는 글자에서는 그 둘만 넓다.
+    private func toleranceDegrees(_ finger: FingerName) -> CGFloat {
+        guard let t = model.currentMatch?.bendTolerance,
+              t.count == PoseFeature.bendCount else { return CGFloat(model.toleranceDegrees) }
+        return CGFloat(t[finger.rawValue * 3] * 180 / .pi)
+    }
+
+    /// 손가락 하나에 관절 3개. 그중 가장 큰 오차를 대표값으로 쓴다.
+    private func worstDegrees(_ finger: FingerName) -> CGFloat {
+        guard let errors = model.currentMatch?.bendError,
+              errors.count == PoseFeature.bendCount else { return 0 }
+        let slice = errors[(finger.rawValue * 3)..<(finger.rawValue * 3 + 3)]
+        return CGFloat((slice.max() ?? 0) * 180 / .pi)
+    }
+}
+```
+
+### PracticeSpace.swift
+
+```swift
+import RealityKit
+import SwiftUI
+
+/// 손 스켈레톤 추적은 몰입 공간에서만 동작한다.
+struct PracticeSpace: View {
+    @Environment(TutorModel.self) private var model
+
+    var body: some View {
+        RealityView { content in
+            content.add(model.overlay.root)
+        }
+        .task {
+            await model.start()
+        }
+        .onDisappear {
+            model.stop()
+        }
+    }
+}
+```
+
+### TutorModel.swift
+
+```swift
+import ARKit
+import Observation
+import SwiftUI
+
+/// 인식 → 피드백 → 오버레이 루프를 한 자리에 묶는다.
+@MainActor
+@Observable
+final class TutorModel {
+
+    // 학습 목표
+    var target: Jamo = .giyeok {
+        didSet {
+            stabilizer.reset()
+            mockFeed.target = target
+            currentMatch = nil
+            advice = nil
+            fingerNote = nil
+        }
+    }
+
+    /// 주로 쓰는 손.
+    var handedness: HandAnchor.Chirality = .right {
+        didSet { liveFeed.preferredChirality = handedness }
+    }
+
+    /// 겹쳐 보기 / 나란히 보기. 초심자는 나란히, 교정 단계에서는 겹치는 쪽을 선호한다.
+    var overlayMode: GuideOverlay.Mode = .sideBySide
+
+    /// 실기기가 아니면 목 데이터로 자동 전환한다.
+    private(set) var usingMockData = false
+    private(set) var isRunning = false
+
+    // 판정 결과
+    private(set) var currentMatch: PoseMatch?
+    private(set) var bestGuess: PoseMatch?
+    private(set) var advice: String?
+    /// 이 글자가 약지·새끼를 관대하게 본다는 안내. 해당 없으면 nil.
+    private(set) var fingerNote: String?
+    private(set) var confirmed: Jamo?
+    private(set) var holdProgress: Double = 0
+    /// 특징 추출 + 40자 비교에 걸린 시간(ms). 프레임당 1ms 예산을 확인한다.
+    private(set) var lastFrameCost: Double = 0
+
+    var matcher = PoseMatcher()
+    var coach = Coach()
+    let stabilizer = Stabilizer()
+    let overlay = GuideOverlay()
+
+    private let liveFeed = HandTrackingFeed()
+    private let mockFeed = MockHandFeed()
+    private var pump: Task<Void, Never>?
+
+    /// 허용 오차는 감으로 정하지 않는다. 숙련자 표준편차의 두 배에서 출발해
+    /// 초심자 통과율을 보며 조정한다. 이 슬라이더는 그 조정용이다.
+    var toleranceDegrees: Double {
+        get { Double(matcher.bendTolerance) * 180 / .pi }
+        set {
+            let radians = Float(newValue * .pi / 180)
+            matcher.bendTolerance = radians
+            coach.bendTolerance = radians
+        }
+    }
+
+    func start() async {
+        guard !isRunning else { return }
+        isRunning = true
+
+        if HandTrackingFeed.isSupported {
+            usingMockData = false
+            liveFeed.preferredChirality = handedness
+            await liveFeed.start()
+            pump = Task { [weak self] in
+                guard let self else { return }
+                for await sample in self.liveFeed.samples { self.consume(sample) }
+            }
+        } else {
+            usingMockData = true
+            mockFeed.target = target
+            await mockFeed.start()
+            pump = Task { [weak self] in
+                guard let self else { return }
+                for await sample in self.mockFeed.samples { self.consume(sample) }
+            }
+        }
+    }
+
+    func stop() {
+        pump?.cancel()
+        pump = nil
+        liveFeed.stop()
+        mockFeed.stop()
+        isRunning = false
+    }
+
+    /// 목 데이터에 실어 주는 오차. 슬라이더로 조절해 판정을 시험한다.
+    func setMockError(_ radians: Float) { mockFeed.injectedError = radians }
+
+    // MARK: - 루프
+
+    private func consume(_ sample: HandSample) {
+        let t0 = CFAbsoluteTimeGetCurrent()
+
+        guard let reference = ReferenceLibrary.shared.reference(for: target) else { return }
+        let match = matcher.match(sample.feature, to: reference, jamo: target)
+
+        // 목표와 다른 글자를 짚고 있으면 그것도 알려 준다.
+        let ranked = matcher.rank(sample.feature, in: ReferenceLibrary.shared)
+
+        stabilizer.feed(match, at: sample.timestamp)
+
+        currentMatch = match
+        bestGuess = ranked.first
+        advice = coach.advice(for: match)
+        fingerNote = coach.note(for: match)
+        confirmed = stabilizer.confirmed
+        holdProgress = stabilizer.progress
+
+        overlay.update(match: match,
+                       reference: reference,
+                       wrist: sample.wristTransform,
+                       span: sample.handSpan,
+                       tolerances: match.bendTolerance,
+                       mode: overlayMode)
+
+        lastFrameCost = (CFAbsoluteTimeGetCurrent() - t0) * 1000
+    }
+}
+```
+
+### TutorView.swift
+
+```swift
+import ARKit
+import SwiftUI
+
+struct TutorView: View {
+    @Environment(TutorModel.self) private var model
+    @Environment(\.openImmersiveSpace) private var openSpace
+    @Environment(\.dismissImmersiveSpace) private var dismissSpace
+    @State private var spaceOpen = false
+
+    var body: some View {
+        @Bindable var model = model
+
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+                    header
+                    JamoPicker(selection: $model.target)
+                    VerdictCard()
+                    ErrorChart()
+                    settings
+                }
+                .padding(28)
+            }
+            .navigationTitle("지화 튜터")
+            .toolbar {
+                ToolbarItem(placement: .bottomOrnament) {
+                    Button(spaceOpen ? "연습 끝내기" : "연습 시작") {
+                        Task { await toggleSpace() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("손으로 지문자를 만들면 어느 손가락이 얼마나 어긋났는지 짚어 줍니다.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+            if model.usingMockData {
+                Label("실기기가 아니어서 목 데이터를 재생 중입니다. 판정 로직은 그대로 돌아갑니다.",
+                      systemImage: "waveform.path")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+            if ReferenceLibrary.shared.isPlaceholder(model.target) {
+                Label("이 글자의 기준 포즈는 아직 자리표시자입니다. 숙련자 포즈로 교체해야 합니다.",
+                      systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.yellow)
+            }
+            if confusableCount > 0 {
+                Label("현재 기준 표에서 서로 갈라내지 못하는 자모 쌍이 \(confusableCount)개 있습니다. 실측 포즈로 교체하면 줄어듭니다.",
+                      systemImage: "arrow.triangle.branch")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var settings: some View {
+        @Bindable var model = model
+        return GroupBox("설정") {
+            VStack(alignment: .leading, spacing: 16) {
+                Picker("주로 쓰는 손", selection: $model.handedness) {
+                    Text("오른손").tag(ARKitChirality.right)
+                    Text("왼손").tag(ARKitChirality.left)
+                }
+                .pickerStyle(.segmented)
+
+                Picker("가이드", selection: $model.overlayMode) {
+                    ForEach(GuideOverlay.Mode.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+
+                VStack(alignment: .leading) {
+                    Text("허용 오차 \(Int(model.toleranceDegrees))°")
+                        .font(.caption)
+                    Slider(value: $model.toleranceDegrees, in: 5...30, step: 1)
+                }
+
+                if model.usingMockData {
+                    MockErrorSlider()
+                }
+
+                Text("프레임당 판정 비용 \(model.lastFrameCost, format: .number.precision(.fractionLength(2)))ms · 예산 1ms")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.vertical, 8)
+        }
+    }
+
+    private var confusableCount: Int {
+        ReferenceLibrary.shared.confusablePairs().count
+    }
+
+    private func toggleSpace() async {
+        if spaceOpen {
+            await dismissSpace()
+            spaceOpen = false
+        } else {
+            if case .opened = await openSpace(id: "practice") { spaceOpen = true }
+        }
+    }
+}
+
+private struct MockErrorSlider: View {
+    @Environment(TutorModel.self) private var model
+    @State private var degrees: Double = 20
+
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text("목 데이터 오차 \(Int(degrees))° (중지)")
+                .font(.caption)
+            Slider(value: $degrees, in: 0...45, step: 1)
+                .onChange(of: degrees) { _, new in
+                    model.setMockError(Float(new * .pi / 180))
+                }
+        }
+    }
+}
+```
+
+### JamoPicker.swift
+
+```swift
+import SwiftUI
+
+/// 자음 19 · 모음 21. 학습 순서대로 한 글자씩 고른다.
+struct JamoPicker: View {
+    @Binding var selection: Jamo
+
+    private let columns = Array(repeating: GridItem(.flexible(minimum: 44), spacing: 8), count: 10)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            section("자음 19", Jamo.consonants)
+            section("모음 21", Jamo.vowels)
+        }
+    }
+
+    private func section(_ title: String, _ items: [Jamo]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.headline)
+            LazyVGrid(columns: columns, spacing: 8) {
+                ForEach(items) { jamo in
+                    Button {
+                        selection = jamo
+                    } label: {
+                        Text(jamo.rawValue)
+                            .font(.title2)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .overlay(alignment: .topTrailing) {
+                                if jamo.isOrientationCritical {
+                                    Circle()
+                                        .frame(width: 5, height: 5)
+                                        .foregroundStyle(.tint)
+                                        .padding(4)
+                                }
+                            }
+                    }
+                    .buttonStyle(.bordered)
+                    .background(jamo == selection ? Color.accentColor.opacity(0.35) : .clear,
+                                in: .rect(cornerRadius: 12))
+                }
+            }
+            Text("점이 붙은 글자는 손바닥 방향으로 갈립니다. 회전 정규화를 적용하면 서로 구별할 수 없게 됩니다.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+```
+
+### VerdictCard.swift
+
+```swift
+import SwiftUI
+
+/// 판정과 교정 문장. 한 번에 하나만 말한다.
+struct VerdictCard: View {
+    @Environment(TutorModel.self) private var model
+
+    var body: some View {
+        GroupBox {
+            HStack(alignment: .center, spacing: 24) {
+                ZStack {
+                    Circle()
+                        .stroke(.quaternary, lineWidth: 8)
+                    Circle()
+                        .trim(from: 0, to: model.holdProgress)
+                        .stroke(passed ? Color.green : Color.orange,
+                                style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                    Text(model.target.rawValue).font(.system(size: 44, weight: .semibold))
+                }
+                .frame(width: 110, height: 110)
+                .animation(.linear(duration: 0.1), value: model.holdProgress)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(headline)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(passed ? .green : .primary)
+
+                    if let advice = model.advice {
+                        Label(advice, systemImage: "hand.point.up.left")
+                            .font(.body)
+                    }
+
+                    if let note = model.fingerNote, !passed {
+                        Label(note, systemImage: "hand.raised.fingers.spread")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let best = model.bestGuess, best.jamo != model.target, !passed {
+                        Text("지금 손 모양은 ‘\(best.jamo.rawValue)’에 더 가깝습니다.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let m = model.currentMatch {
+                        Text("거리 \(m.distance, format: .number.precision(.fractionLength(2))) · 수향 오차 \(Int(m.orientationError * 180 / .pi))°")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 10)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(Text(headline + (model.advice.map { ". " + $0 } ?? "")))
+        }
+    }
+
+    private var passed: Bool { model.confirmed == model.target }
+
+    private var headline: String {
+        if passed { return "통과" }
+        if model.currentMatch == nil { return "손을 보여 주세요" }
+        if model.currentMatch?.passed == true { return "유지하세요" }
+        return "조금 더"
+    }
+}
+```
+
+### 계속하기
+
+- <doc:JihwaTutor>
+- <doc:Limits-and-References>
