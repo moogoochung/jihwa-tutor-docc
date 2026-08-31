@@ -4,7 +4,22 @@
 
 ## Overview
 
-> Note: **이 단계에서 새로 만드는 파일** — `HandSample.swift` · `Jamo.swift` · `MockHandFeed.swift`. 세 파일 모두 `import ARKit`이 필요합니다. `HandAnchor.Chirality`(왼손/오른손 구분)가 ARKit에 있기 때문입니다. 시뮬레이터에서도 타입은 그대로 쓰입니다.
+@Row {
+    @Column {
+        ## 25분
+        **예상 소요 시간**
+
+        @Small {
+            코드를 직접 따라 치는 기준입니다.
+        }
+    }
+    @Column(size: 2) {
+        **이 단계에서 만드는 파일**
+
+        `HandSample.swift` · `Jamo.swift` · `MockHandFeed.swift`. 세 파일 모두 `import ARKit`이 필요합니다 — `HandAnchor.Chirality`(왼손/오른손 구분)가 ARKit에 있기 때문입니다. 시뮬레이터에서도 타입은 그대로 쓰입니다.
+    }
+}
+
 
 ### 1.1
 

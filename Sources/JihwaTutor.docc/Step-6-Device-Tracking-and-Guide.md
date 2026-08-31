@@ -4,7 +4,22 @@
 
 ## Overview
 
-> Note: **이 단계에서 새로 만드는 파일** — `HandTrackingFeed.swift`(`ARKit` · `simd` · `OSLog` · `QuartzCore`) · `GuideOverlay.swift`(`UIKit` · `RealityKit` · `simd`) · `PracticeSpace.swift`(`RealityKit` · `SwiftUI`). 여기서 처음으로 `import RealityKit`이 등장합니다 — 3D 뼈대를 그리는 것은 SwiftUI가 아니라 RealityKit의 일입니다.
+@Row {
+    @Column {
+        ## 30분
+        **예상 소요 시간**
+
+        @Small {
+            코드를 직접 따라 치는 기준입니다.
+        }
+    }
+    @Column(size: 2) {
+        **이 단계에서 만드는 파일**
+
+        `HandTrackingFeed.swift`(`ARKit` · `simd` · `OSLog` · `QuartzCore`) · `GuideOverlay.swift`(`UIKit` · `RealityKit` · `simd`) · `PracticeSpace.swift`(`RealityKit` · `SwiftUI`). 여기서 처음으로 `import RealityKit`이 등장합니다 — 3D 뼈대를 그리는 것은 SwiftUI가 아니라 RealityKit의 일입니다. **이 단계는 Apple Vision Pro 실기기가 필요합니다.**
+    }
+}
+
 
 ### 6.1
 

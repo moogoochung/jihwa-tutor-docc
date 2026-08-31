@@ -4,6 +4,22 @@ Xcode를 여는 것부터 시작합니다. 빈 창 하나가 뜨면 이 단계�
 
 ## Overview
 
+@Row {
+    @Column {
+        ## 25분
+        **예상 소요 시간**
+
+        @Small {
+            코드를 직접 따라 치는 기준입니다.
+        }
+    }
+    @Column(size: 2) {
+        **이 단계에서 필요한 것**
+
+        **Xcode 26 이상**과 **visionOS 플랫폼 지원**. 코드는 `JihwaTutorApp.swift` 한 파일뿐이고, 나머지 시간은 Xcode 프로젝트를 만들고 시뮬레이터를 처음 띄우는 데 씁니다.
+    }
+}
+
 ### 0.1
 
 **Xcode에서 새 프로젝트를 만듭니다.** 메뉴에서 **File ▸ New ▸ Project…** (⇧⌘N)를 고릅니다. 템플릿 고르는 창이 뜨면 위쪽 탭에서 **visionOS**를 누르고, Application 칸의 **App**을 고른 뒤 **Next**를 누릅니다.

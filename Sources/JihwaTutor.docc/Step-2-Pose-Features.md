@@ -4,7 +4,22 @@
 
 ## Overview
 
-> Note: **이 단계에서 새로 만드는 파일** — `PoseFeature.swift` · `PoseFeature+Angles.swift`. 둘 다 `import ARKit`(관절 이름 `HandSkeleton.JointName`)과 `import simd`(벡터 연산 `dot` · `cross` · `length`)가 필요합니다.
+@Row {
+    @Column {
+        ## 35분
+        **예상 소요 시간**
+
+        @Small {
+            코드를 직접 따라 치는 기준입니다.
+        }
+    }
+    @Column(size: 2) {
+        **이 단계에서 만드는 파일**
+
+        `PoseFeature.swift` · `PoseFeature+Angles.swift`. 둘 다 `import ARKit`(관절 이름 `HandSkeleton.JointName`)과 `import simd`(벡터 연산 `dot` · `cross` · `length`)가 필요합니다. **이 튜토리얼에서 수학이 가장 몰려 있는 단계입니다.**
+    }
+}
+
 
 ### 2.1
 

@@ -4,7 +4,22 @@
 
 ## Overview
 
-> Note: **이 단계에서 새로 만드는 파일** — `PoseMatcher.swift`(`Foundation` · `simd`) · `Coaching.swift`(`Foundation`) · `Stabilizer.swift`(`Foundation`) · `TutorModel.swift`(`ARKit` · `Observation` · `SwiftUI`). 판정 쪽 세 파일은 손 추적을 만지지 않으므로 ARKit이 필요 없습니다. `TutorModel`만 `HandAnchor.Chirality`를 쓰기 때문에 ARKit이 필요합니다.
+@Row {
+    @Column {
+        ## 45분
+        **예상 소요 시간**
+
+        @Small {
+            코드를 직접 따라 치는 기준입니다.
+        }
+    }
+    @Column(size: 2) {
+        **이 단계에서 만드는 파일**
+
+        `PoseMatcher.swift`(`Foundation` · `simd`) · `Coaching.swift`(`Foundation`) · `Stabilizer.swift`(`Foundation`) · `TutorModel.swift`(`ARKit` · `Observation` · `SwiftUI`). 판정 쪽 세 파일은 손 추적을 만지지 않으므로 ARKit이 필요 없고, `TutorModel`만 `HandAnchor.Chirality`를 쓰기 때문에 필요합니다. **가장 긴 단계입니다.**
+    }
+}
+
 
 ### 4.1
 

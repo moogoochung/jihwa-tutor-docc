@@ -4,7 +4,22 @@
 
 ## Overview
 
-> Note: **이 단계에서 새로 만드는 파일** — `TutorView.swift`(`ARKit` · `SwiftUI`) · `JamoPicker.swift` · `VerdictCard.swift` · `ErrorChart.swift`(셋 다 `SwiftUI`만). 화면 세 개는 SwiftUI 하나로 충분하고, `TutorView`만 손 좌우 설정 때문에 `import ARKit`이 더 필요합니다.
+@Row {
+    @Column {
+        ## 40분
+        **예상 소요 시간**
+
+        @Small {
+            코드를 직접 따라 치는 기준입니다.
+        }
+    }
+    @Column(size: 2) {
+        **이 단계에서 만드는 파일**
+
+        `TutorView.swift`(`ARKit` · `SwiftUI`) · `JamoPicker.swift` · `VerdictCard.swift` · `ErrorChart.swift`(셋 다 `SwiftUI`만). 화면 세 개는 SwiftUI 하나로 충분하고, `TutorView`만 손 좌우 설정 때문에 `import ARKit`이 더 필요합니다.
+    }
+}
+
 
 ### 5.1
 

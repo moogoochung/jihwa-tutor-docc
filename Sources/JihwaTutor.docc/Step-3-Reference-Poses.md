@@ -4,7 +4,22 @@
 
 ## Overview
 
-> Note: **이 단계에서 새로 만드는 파일** — `ReferenceLibrary.swift`. `import Foundation`과 `import simd`만 있으면 됩니다. 이 파일은 손 추적을 직접 만지지 않으므로 ARKit이 필요 없습니다.
+@Row {
+    @Column {
+        ## 30분
+        **예상 소요 시간**
+
+        @Small {
+            코드를 직접 따라 치는 기준입니다.
+        }
+    }
+    @Column(size: 2) {
+        **이 단계에서 만드는 파일**
+
+        `ReferenceLibrary.swift` 하나. `import Foundation`과 `import simd`만 있으면 됩니다 — 이 파일은 손 추적을 직접 만지지 않으므로 ARKit이 필요 없습니다.
+    }
+}
+
 
 ### 3.1
 
