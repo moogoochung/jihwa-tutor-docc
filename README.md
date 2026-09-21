@@ -3,7 +3,21 @@
 visionOS 튜토리얼 **지화 실시간 학습 튜터 만들기** 의 원본과 빌드 결과물입니다.
 
 - 문서: <https://moogoochung.github.io/jihwa-tutor-docc/>
+- 문서 개선안: <https://moogoochung.github.io/jihwa-tutor-docc/improvement/>
 - 호스팅 기준 경로는 저장소 이름과 같은 `jihwa-tutor-docc` 로 맞춰져 있습니다.
+
+## 문서 개선안 DocC
+
+`Sources/JihwaTutorRevision.docc/`는 소개문·0~6단계 개정안·구현 및 검증 기준을 담은 별도 DocC 카탈로그입니다.
+앱의 구현 완료 보고서가 아니라 문서와 코드의 개선 제안이며, 기존 튜토리얼과 별도 경로에서 제공합니다.
+
+```bash
+./Scripts/build-improvement-docs.sh
+```
+
+빌드 결과는 `improvement/`에 저장됩니다. 이 스크립트는 기존 튜토리얼 소스나 루트 사이트를 덮어쓰지 않습니다.
+원본과 빌드 결과를 함께 커밋하면 기존 Pages 워크플로가 `/jihwa-tutor-docc/improvement/`에 배포합니다.
+정적 호스팅 기준 경로는 `jihwa-tutor-docc/improvement`입니다.
 
 ## 구성
 
